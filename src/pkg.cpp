@@ -61,11 +61,22 @@ void delete_cpp_object(SEXP R_ptr)
    - Slot 2: NULL */
 SEXP create_alrepped_cpp_object()
 {
-    CustomCppClass *ptr_to_cpp_obj = new CustomCppClass();
-    SEXP R_ptr = PROTECT(R_MakeExternalPtr(ptr_to_cpp_obj, R_NilValue, R_NilValue));
+    /* Note: one can directly initialize these objects with the right values by
+       e.g. passing a non-null pointer to the constructor, or passing the R_ptr
+       variable to the first slot of the altrep method, but for memory safety
+       of C++ objects, it's better to create the R objects first so that potential
+       R allocation errors here don't end up resulting in non-destructued and
+       unreachable C++ objects whose memory ends up leaked. */
+    SEXP R_ptr = PROTECT(R_MakeExternalPtr(nullptr, R_NilValue, R_NilValue));
+    SEXP R_altrepped_obj = PROTECT(R_new_altrep(altrepped_pointer_class, R_NilValue, R_NilValue));
+    
+    std::unique_ptr<CustomCppClass> ptr_to_cpp_obj(new CustomCppClass());
+    R_SetExternalPtrAddr(R_ptr, ptr_to_cpp_obj.get());
     R_RegisterCFinalizerEx(R_ptr, delete_cpp_object, TRUE);
-
-    SEXP R_altrepped_obj = PROTECT(R_new_altrep(altrepped_pointer_class, R_ptr, R_NilValue));
+    ptr_to_cpp_obj.release();
+    
+    R_set_altrep_data1(R_altrepped_obj, R_ptr);
+    
     UNPROTECT(2);
     return R_altrepped_obj;
 }
@@ -96,12 +107,16 @@ SEXP generate_serialized_state(SEXP R_altrepped_obj)
    Note that the first argument is not used. */
 SEXP deserialize_altrepped_object(SEXP cls, SEXP R_state)
 {
+    SEXP R_ptr = PROTECT(R_MakeExternalPtr(nullptr, R_NilValue, R_NilValue));
+    SEXP R_altrepped_obj = PROTECT(R_new_altrep(altrepped_pointer_class, R_NilValue, R_NilValue));
+    
     std::unique_ptr<CustomCppClass> new_cpp_obj(new CustomCppClass(RAW(R_state)));
-    SEXP R_ptr = PROTECT(R_MakeExternalPtr(new_cpp_obj.get(), R_NilValue, R_NilValue));
+    R_SetExternalPtrAddr(R_ptr, new_cpp_obj.get());
     R_RegisterCFinalizerEx(R_ptr, delete_cpp_object, TRUE);
     new_cpp_obj.release();
-
-    SEXP R_altrepped_obj = PROTECT(R_new_altrep(altrepped_pointer_class, R_ptr, R_NilValue));
+    
+    R_set_altrep_data1(R_altrepped_obj, R_ptr);
+    
     UNPROTECT(2);
     return R_altrepped_obj;
 }
@@ -136,14 +151,18 @@ SEXP duplicate_altrepped_object(SEXP R_altrepped_obj, Rboolean deep)
 
     else {
         Rprintf("Object is being duplicated (deep)\n");
+        SEXP R_ptr = PROTECT(R_MakeExternalPtr(nullptr, R_NilValue, R_NilValue));
+        SEXP R_altrepped_obj = PROTECT(R_new_altrep(altrepped_pointer_class, R_NilValue, R_NilValue));
+        
         const CustomCppClass *old_cpp_obj_ptr = (const CustomCppClass*)R_ExternalPtrAddr(R_altrep_data1(R_altrepped_obj));
         std::unique_ptr<CustomCppClass> new_cpp_obj{};
         *new_cpp_obj = *old_cpp_obj_ptr;
-        SEXP R_ptr = PROTECT(R_MakeExternalPtr(new_cpp_obj.get(), R_NilValue, R_NilValue));
+        R_SetExternalPtrAddr(R_ptr, new_cpp_obj.get());
         R_RegisterCFinalizerEx(R_ptr, delete_cpp_object, TRUE);
         new_cpp_obj.release();
-
-        SEXP R_altrepped_obj = PROTECT(R_new_altrep(altrepped_pointer_class, R_ptr, R_NilValue));
+        
+        R_set_altrep_data1(R_altrepped_obj, R_ptr);
+        
         UNPROTECT(2);
         return R_altrepped_obj;
     }
