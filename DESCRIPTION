@@ -1,0 +1,10 @@
+Package: altreppedpointer
+Type: Package
+Title: Example of ALTREPPED external pointer
+Version: 0.1.0
+Author: David Cortes
+Maintainer: David Cortes <yourself@somewhere.net>
+Description: Example about creating an 'externalptr' object whose serialization is controlled through the altrep system.
+License: BSD_2_clause
+Encoding: UTF-8
+NeedsCompilation: yes

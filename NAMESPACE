@@ -1,0 +1,4 @@
+export(get_custom_object)
+export(check_custom_object)
+export(modify_custom_object)
+useDynLib(altreppedpointer, .registration=TRUE)
