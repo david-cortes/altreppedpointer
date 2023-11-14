@@ -51,6 +51,9 @@ print(obj2[[1]])
 check_custom_object(obj2)
 modify_custom_object(obj2, 7)
 check_custom_object(obj2)
+
+rm(obj)
+gc()
 ```
 
 Then restart the R session or save to and load from `.Rdata` if one wishes to, and verify that the pointers are not set to `NULL`, even though no "deserializing" message is printed to the console (gets ommited when it happens during `load`, but is still shown from `readRDS`).

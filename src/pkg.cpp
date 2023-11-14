@@ -12,6 +12,10 @@ public:
         Rprintf("Object is being created anew\n");
     }
 
+    ~CustomCppClass() {
+        Rprintf("Object is being destructed\n");
+    }
+
     void check_number() const {
         Rprintf("internal number is: %d\n", this->number);
     }
